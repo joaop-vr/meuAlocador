@@ -3,9 +3,9 @@
     topoAtualHeap: .quad 0 # MUITO NECESSÁRIA
 
 .section .text
-.globl alocaMetaDados
+.globl alocaBlocoTopo
 
-alocaMetaDados:
+alocaBlocoTopo:
 
     pushq %rbp 
     movq %rsp, %rbp

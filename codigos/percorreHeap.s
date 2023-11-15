@@ -7,6 +7,9 @@
 
 percorreHeap:
 
+    pushq %rbp
+    movq %rsp, %rbp
+
     // Loop para varredura da Heap
     movq topoInicialHeap, %rax
 enquanto:
