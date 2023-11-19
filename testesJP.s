@@ -81,7 +81,7 @@ linha0:
     syscall                     
 
     // Atribui meta-dados
-    movq $0, -16(%rax)          # dirty
+    movq $1, -16(%rax)          # dirty
     movq -32(%rbp), %rcx
     movq %rcx, -8(%rax)         # size
     
@@ -124,7 +124,7 @@ linha1:
     syscall                     
 
     // Atribui meta-dados
-    movq $0, -16(%rax)          # dirty
+    movq $1, -16(%rax)          # dirty
     movq -40(%rbp), %rcx
     movq %rcx, -8(%rax)         # size
     
@@ -178,7 +178,7 @@ checagem:
 
     movq topoInicialHeap, %rax
 heapNoCOmeco:
-    movq $30, -48(%rbp)
+    movq $20, -48(%rbp)
     movq -48(%rbp), %rcx        # salva a qntd de bytes que queremos alocar
 while:
     cmpq topoAtualHeap, %rax
@@ -195,7 +195,7 @@ while:
     cmpq %rbx, %rcx             # verifica se qntd de bytes para alocarmos <= size_atual
     jle verificaDirty
 
-continuaOLoop:
+retornaAoWhile:
     addq $16, %rbx              # rbx: meta-dados + bytesAlocados
     movq %rbx, %r15
     addq %rbx, %rax             # efetuou o pulo
@@ -210,12 +210,12 @@ entrouDirty:
     movq $0, %rdx
     cmpq %rcx, %rdx
     je gerenciaBloco
-    jmp continuaOLoop
+    jmp retornaAoWhile
 
     /**********************************************/
 
 
-    // Verifica se eh possivel reparte o bloco em 2
+    // Verifica se eh possivel repartir o bloco em 2
 
 gerenciaBloco:
     movq 8(%rax), %rbx          # rbx: size_atual
@@ -238,22 +238,9 @@ gerenciaBloco:
     cmpq $16, %rdx
     jg reparteBloco
 
-caso_0:
-    movq $60, %r10
-    jmp final
-
-caso_1:
-    movq $61, %r10
-    jmp final
-
-caso_2:
-    movq $62, %r10
-    jmp final
-
 
 alocaBloco:
 
-    movq $60, %r10
 entrouAlocaBloco:
 
     // Alocando meta-dados
@@ -278,8 +265,8 @@ entrouAlocaBloco:
 
     movq $0, %r13               # resetando
     movq $0, %r14               # resetando
-    movq -66(%rax), %r13        # r13: bit dirty    
-    movq -58(%rax), %r14        # r14: size
+    movq -36(%rax), %r13        # r13: bit dirty    
+    movq -28(%rax), %r14        # r14: size
 
     
     // Verifica se estamos mexendo com o topo da heap
@@ -292,7 +279,7 @@ naoMexemosComOTopo:
     movq $0, %rdi
     syscall
 
-    jmp final
+    jmp percorreHeap2
 
 atualizaTopo:
 mexemosComOTopo:
@@ -305,11 +292,13 @@ mexemosComOTopo:
     movq $0, %rdi
     syscall
 
-    jmp final
+    movq topoInicialHeap, %r8
+    movq topoAtualHeap, %r9
+
+    jmp percorreHeap2
 
 reparteBloco:
 entrouReparte:
-    movq $61, %r10
 
     /***********************
     se a diferença entre qntds de bytes for maior que 16, ent eh possivel dividir o bloco em 2, logo:
@@ -368,12 +357,187 @@ antesDeAlocarBlocoExtra:
     movq $0, %rdi
     syscall
 
+    jmp percorreHeap2
     /*********************************************/
+/*
+free:
+entrouFree:
+
+    // FUNÇÃO DE FREE
+
+    // rax receberá o endereço passado como parametro pelo usuario
+    movq topoAtualHeap, %rax
+    addq $0, %rax     # meramente para poder testar
+    movq %rax, %rbx     # meramente para debug
+
+    // Caso em que o end. está abaixo do limite inf. da Heap ou é igual a ele
+    cmpq topoInicialHeap, %rax
+    jle saidaErro1
+
+    // Caso em que o end. está acima do limite sup. da Heap ou igual a ele
+    cmpq topoAtualHeap, %rax
+    jge saidaErro2
+
+    movq $0, %r13               # resetando
+    movq $0, %r14               # resetando
+    movq -16(%rax), %r13        # r13: bit dirty    
+    movq -8(%rax), %r14        # r14: size
+
+    // Verifica se -16(%rax) cai no cabeçalho do bloco
+    movq $0, %rcx
+    movq $1, %rdx
+
+    // Bit dirty == 0
+    cmpq %rcx, -16(%rax)
+    je podeDarFree
+
+    // Bit dirty == 1
+    cmpq %rdx, -16(%rax)
+    je podeDarFree
+
+    // Caso em que -16(%rax) não caiu no cabeçalho de um bloco, portanto end. inválido para free
+    jmp saidaErro3
+
+
+podeDarFree:
+
+    movq $60, %r10
+    // free
+    movq $0, -16(%rax)
+
+    movq $0, %r13               # resetando
+    movq $0, %r14               # resetando
+    movq -16(%rax), %r13        # r13: bit dirty    
+    movq -8(%rax), %r14        # r14: size
+deuFree:
+    jmp percorreHeap
+
+
+
+saidaErro1:
+    movq $61, %r10
+    jmp percorreHeap
+
+saidaErro2:
+    movq $62, %r10
+    jmp percorreHeap
+
+saidaErro3:
+    movq $63, %r10
+    jmp percorreHeap
+
+*/
 
     movq topoInicialHeap, %r8
     movq topoAtualHeap, %r9
+    // PERCORRE HEAP APENAS PARA VER OS BLOCOS DE MEM
+
+percorreHeap2:
+
+    // para testes
+    movq topoInicialHeap, %rax
+    addq $90, %rax
+    movq $0, 0(%rax)
+    addq $89, %rax
+    movq $0, 0(%rax)
+
+    movq topoInicialHeap, %rax
+while2:
+    cmpq topoAtualHeap, %rax
+    jge procuraFusaoNos
+
+    movq $0, %r13
+    movq $0, %r14
+    movq 0(%rax), %r13
+    movq 8(%rax), %r14
+
+    movq 8(%rax), %rbx          # avança para pegar o size_atual (rbx: size_atual)
+
+    addq $16, %rbx              # rbx: meta-dados + bytesAlocados
+    movq %rbx, %r15
+    addq %rbx, %rax             # efetuou o pulo
+checagem2:
+    jmp while2
+
+    movq $12, %rax
+    movq $0, %rdi
+    syscall
+
+
+procuraFusaoNos:
+
+    // Loop para varredura da Heap
+    movq topoInicialHeap, %rax
+loop:
+
+    movq $60, %r10  # debug
+
+    movq %rax, %rbx             # rbx: end. do bloco de Mem antigo
+    movq 0(%rax), %rcx          # rcx: dirty_antigo
+    movq 8(%rax), %rdx          # rdx: size_antigo
+
+    addq $16, %rdx              # rdx: meta-dados + size
+    addq %rdx, %rax             # efetuou o pulo para o próximo "bloco de memória"; rax: end. do bloco de Mem atual
+
+    cmpq topoAtualHeap, %rax
+    jge percorreHeap3
+
+    movq 0(%rbx), %rsi          # rsi: dirty_antigo
+    movq 0(%rax), %rdi          # rdi: dirty_atual
+    
+    movq 0(%rbx), %r11 
+    movq 8(%rbx), %r12 
+    movq 0(%rax), %r13 
+    movq 8(%rax), %r14 
+    movq %rbx, %r15
+
+    addq %rsi, %rdi
+    cmpq $0, %rdi               # rdi: dirty_antigo + dirty_atual
+    je fusaoNos
+paraaa:    
+    jmp loop
+
+
+fusaoNos:
+
+    movq $61, %r10  # debug
+
+    movq 8(%rbx), %rcx          # rcx: size_antigo
+    movq 8(%rax), %rdx          # rdx: size_atual
+    addq %rcx, %rdx             # rdx: size_antigo + size_atual
+    addq $16, %rdx              # rdx: rdx + cabeçalho do bloco fundido
+
+    movq %rdx, 8(%rbx)
+antesDeOutraFusao:
+    jmp procuraFusaoNos
+
+anteFInal:
+
+percorreHeap3:
+
+    movq topoInicialHeap, %rax
+while3:
+    cmpq topoAtualHeap, %rax
+    jge final
+
+    movq $0, %r13
+    movq $0, %r14
+    movq 0(%rax), %r13
+    movq 8(%rax), %r14
+
+    movq 8(%rax), %rbx          # avança para pegar o size_atual (rbx: size_atual)
+
+    addq $16, %rbx              # rbx: meta-dados + bytesAlocados
+    movq %rbx, %r15
+    addq %rbx, %rax             # efetuou o pulo
+checagem3:
+    jmp while3
+
+    movq $12, %rax
+    movq $0, %rdi
+    syscall
+
 final:
-antFineal:
     popq %rbp
     movq $60, %rax
     syscall
