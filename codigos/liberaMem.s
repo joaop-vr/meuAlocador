@@ -8,6 +8,7 @@
 
 liberaMem:
 
+
     pushq %rbp 
     movq %rsp, %rbp
 

@@ -11,13 +11,11 @@ alocaMem:
     movq %rsp, %rbp
 
     subq $24, %rsp
-    movq topoInicialHeap, -8(%rbp)
-    movq topoAtualHeap, -16(%rbp)
-    movq %rdi, -24(%rbp)
+    movq %rdi, -8(%rbp)             # valor passado como parâmetro
 
     // Loop para o firt-fit
     movq topoInicialHeap, %rax
-    movq -24(%rbp), %rcx              # rcx: qntd de bytes que queremos alocar
+    movq -8(%rbp), %rcx              # rcx: qntd de bytes que queremos alocar
 
 loop:
     cmpq topoAtualHeap, %rax
@@ -49,7 +47,7 @@ verificaDirty:
 *************************************************/
 gerenciaBloco:
     movq 8(%rax), %rbx          # rbx: size_atual
-    movq -24(%rbp), %rcx        # rcx: qntd de bytes que queremos alocar
+    movq -8(%rbp), %rcx        # rcx: qntd de bytes que queremos alocar
 
     movq %rbx, %rdx             
     subq %rcx, %rdx             # rdx: diferença entre size_atual e qntd de bytes para alocarmos
@@ -79,13 +77,13 @@ alocaBloco:
     * o bit dirty e o size na heap
     *************************************************/
     movq $1, -16(%rax)          # dirty
-    movq -24(%rbp), %rcx
+    movq -8(%rbp), %rcx
     movq %rcx, -8(%rax)         # size
 
     
     // Alocando os "size" bytes
     // (lembrar que o endereço do topo da heap já esta no rax)
-    movq -24(%rbp), %rcx        # rcx: numero de bytes que quereos alocar
+    movq -8(%rbp), %rcx        # rcx: numero de bytes que quereos alocar
     addq %rcx, %rax
     
     /***********************************************
@@ -119,13 +117,13 @@ reparteBloco:
 
     // Atribui os meta-dados
     movq $1, -16(%rax)          # dirty
-    movq -24(%rbp), %rcx
+    movq -8(%rbp), %rcx
     movq %rcx, -8(%rax)         # size
 
     
     // Aloca os "size" bytes
     // (lembrar que o endereço do topo da heap já esta no rax)
-    movq -24(%rbp), %rcx        # rcx: numero de bytes que quereos alocar
+    movq -8(%rbp), %rcx        # rcx: numero de bytes que quereos alocar
     addq %rcx, %rax
 
     // Aloca meta-dados do 2o bloco
@@ -142,5 +140,4 @@ reparteBloco:
 final:
 
     popq %rbp
-    movq $60, %rax
-    syscall
+    ret

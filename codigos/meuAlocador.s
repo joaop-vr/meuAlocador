@@ -1,7 +1,12 @@
 .section .data
+    enderecoMemoria: .quad 0
     topoInicialHeap: .quad 0
     topoAtualHeap: .quad 0
-    enderecoMemoria: .quad 0
+    gerenciamento:  .asciz "################"   # String para área de gerenciamento
+    livre: .asciz "-"
+    ocupado: .asciz "+"
+    vazio: .asciz "<vazio>"
+    quebraLinha: .quad 10  # Código ASCII para a quebra de linha (\n)
 
 .section .text
 
@@ -16,6 +21,7 @@ iniciaAlocador:
     syscall                 # Faz a chamada de sistema
 
     movq %rax, topoInicialHeap
+    movq %rax, topoAtualHeap
 
     popq %rbp
     ret
@@ -101,7 +107,18 @@ alocaBloco:
 
     // Alocando meta-dados
     addq $16, %rax              # adiciona 16 para alocar o dirty e o size
-    movq %rax, enderecoMemoria              
+    movq %rax, enderecoMemoria
+
+    // Alocando meta-dados
+    movq topoAtualHeap, %rax    # Rax : topoAtual
+    addq $16, %rax              # adiciona 16 para alocar o dirty e o size
+    movq %rax, topoAtualHeap    # atualiza o topo da heap
+    movq topoAtualHeap, %rbx    # rbx esta sendo utilizado apenas como param. de checagem
+
+    /* Atualiza topo Heap */
+    movq $12, %rax              
+    movq topoAtualHeap, %rdi    
+    syscall   
 
     /***********************************************
     * O endereço do topoAtualHeap está no rax, 
@@ -172,6 +189,7 @@ reparteBloco:
 
 finalAloca:
     movq enderecoMemoria, %rax
+    addq $8, %rsp
     popq %rbp
     ret
 
@@ -322,7 +340,7 @@ continuarLoopImprimir:
 heapVazia:
     // Imprime uma quebra de linha
     movq $vazio, %rsi
-    movq $6, %rdx               # Tamanho da string (incluindo o caractere nulo)
+    movq $8, %rdx               # Tamanho da string (incluindo o caractere nulo)
     movq $1, %rax               # syscall para write
 
     // Salva os registradores que podem ser modificados pela syscall
