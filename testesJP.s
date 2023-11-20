@@ -1,6 +1,11 @@
 .section .data
     topoInicialHeap: .quad 0
     topoAtualHeap: .quad 0 # MUITO NECESSÁRIA
+    gerenciamento:  .asciz "################"   # String para área de gerenciamento
+    livre: .asciz "-"
+    ocupado: .asciz "+"
+    vazio: .asciz "vazio"
+    quebraLinha: .quad 10  # Código ASCII para a quebra de linha (\n)
 
 .section .text
 .globl _start
@@ -434,12 +439,13 @@ saidaErro3:
 
 percorreHeap2:
 
-    // para testes
+    /**** PARA TESTES ******
     movq topoInicialHeap, %rax
     addq $90, %rax
     movq $0, 0(%rax)
     addq $89, %rax
     movq $0, 0(%rax)
+    /************************/
 
     movq topoInicialHeap, %rax
 while2:
@@ -518,7 +524,7 @@ percorreHeap3:
     movq topoInicialHeap, %rax
 while3:
     cmpq topoAtualHeap, %rax
-    jge final
+    jge imprimeMapaHeap
 
     movq $0, %r13
     movq $0, %r14
@@ -537,7 +543,89 @@ checagem3:
     movq $0, %rdi
     syscall
 
-final:
+
+
+imprimeMapaHeap:
+
+    movq $1, %rdi  # File descriptor 1 (stdout)
+    movq topoInicialHeap, %rbx
+    movq topoAtualHeap, %rax
+    cmpq %rbx, %rax
+    je heapVazia
+
+while4:
+    cmpq topoAtualHeap, %rbx
+    jge finalImprimir
+
+    // Imprime os caracteres da área de gerenciamento
+    movq $gerenciamento, %rsi
+    movq $17, %rdx              # Tamanho da string (incluindo o caractere nulo)
+    movq $1, %rax               # syscall para write
+
+    // Salva os registradores que podem ser modificados pela syscall
+    pushq %rdi
+    pushq %rsi
+    pushq %rdx
+    syscall
+    popq %rdx
+    popq %rsi
+    popq %rdi
+
+    movq 8(%rbx), %rcx          # rcx: size
+    movq %rcx, %r10     # debug
+
+    cmpq $0, 0(%rbx)
+    je blocoLivre
+
+    movq $ocupado, %rsi
+    jmp escreveCaracter
+
+blocoLivre:
+    movq $livre, %rsi
+
+escreveCaracter:
+    movq $2, %rdx              # Tamanho da string (1 caractere)
+    movq $1, %rax              # syscall para write
+
+    pushq %rcx
+    syscall
+    popq %rcx
+
+    subq $1, %rcx
+    movq %rcx, %r10     # debug
+    cmpq $0, %rcx
+    je continuarLoopImprimir
+    jmp escreveCaracter
+
+continuarLoopImprimir:
+    movq 8(%rbx), %rcx          # rcx: size
+    addq $16, %rcx
+    addq %rcx, %rbx             # efetuou o pulo
+checagem4:
+    jmp while4
+
+heapVazia:
+    movq $vazio, %rsi
+    movq $6, %rdx              # Tamanho da string (incluindo o caractere nulo)
+    movq $1, %rax               # syscall para write
+    // Salva os registradores que podem ser modificados pela syscall
+    pushq %rdi
+    pushq %rsi
+    pushq %rdx
+    syscall
+    popq %rdx
+    popq %rsi
+    popq %rdi
+
+finalImprimir:
+    # Imprime uma quebra de linha
+    movq $quebraLinha, %rsi             # Código ASCII para a quebra de linha (\n)
+    movq $1, %rdi              # File descriptor 1 (stdout)
+    movq $2, %rdx              # Tamanho da string (1 caractere)
+    movq $1, %rax              # syscall para write
+
+    syscall
+    
     popq %rbp
     movq $60, %rax
     syscall

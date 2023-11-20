@@ -42,11 +42,7 @@ liberaMem:
 podeDarFree:
 
     movq $0, -16(%rax)
-
-    popq %rbp
-    movq $60, %rax
-    movq $1, %rdi
-    syscall
+    jmp procuraFusaoNos
 
 
 saidaErro:
@@ -54,4 +50,48 @@ saidaErro:
     popq %rbp
     movq $60, %rax
     movq $0, %rdi
+    syscall
+
+procuraFusaoNos:
+
+    // Loop para varredura da Heap
+    movq topoInicialHeap, %rax
+loop:
+
+    movq %rax, %rbx             # rbx: end. do bloco de Mem antigo
+    movq 0(%rax), %rcx          # rcx: dirty_antigo
+    movq 8(%rax), %rdx          # rdx: size_antigo
+
+    addq $16, %rdx              # rdx: meta-dados + size
+    addq %rdx, %rax             # efetuou o pulo para o próximo "bloco de memória"; rax: end. do bloco de Mem atual
+
+    cmpq topoAtualHeap, %rax
+    jge final
+
+    movq 0(%rbx), %r10          # r10: dirty_antigo
+    movq 0(%rax), %r11          # r11: dirty_atual
+
+    addq %r10, %r11
+    cmpq $0, %r11               # r11: dirty_antigo + dirty_atual
+    je fusaoNos 
+
+    jmp loop
+
+
+fusaoNos:
+
+    movq 8(%rbx), %rcx          # rcx: size_antigo
+    movq 8(%rax), %rdx          # rdx: size_atual
+    addq %rcx, %rdx             # rdx: size_antigo + size_atual
+    addq $16, %rdx              # rdx: rdx + cabeçalho do bloco fundido
+    movq %rdx, 8(%rbx)          # atualiza valor de size
+
+    jmp procuraFusaoNos
+
+
+final:
+
+    popq %rbp
+    movq $60, %rax
+    movq $1, %rdi
     syscall
