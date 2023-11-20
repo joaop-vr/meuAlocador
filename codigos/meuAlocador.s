@@ -53,12 +53,13 @@ alocaMem:
 
     // Loop para o firt-fit
     movq topoInicialHeap, %rax
-    movq -8(%rbp), %rcx              # rcx: qntd de bytes que queremos alocar
+    
 
 loopAloca:
     cmpq topoAtualHeap, %rax
     jge alocaBloco
 
+    movq -8(%rbp), %rcx         # rcx: qntd de bytes que queremos alocar
     movq 8(%rax), %rbx          # avança para pegar o size_atual (rbx: size_atual)
 
     cmpq %rbx, %rcx             # verifica se qntd de bytes para alocarmos <= size_atual
@@ -85,7 +86,7 @@ verificaDirty:
 *************************************************/
 gerenciaBloco:
     movq 8(%rax), %rbx          # rbx: size_atual
-    movq -8(%rbp), %rcx        # rcx: qntd de bytes que queremos alocar
+    movq -8(%rbp), %rcx         # rcx: qntd de bytes que queremos alocar
 
     movq %rbx, %rdx             
     subq %rcx, %rdx             # rdx: diferença entre size_atual e qntd de bytes para alocarmos
@@ -109,17 +110,15 @@ alocaBloco:
     addq $16, %rax              # adiciona 16 para alocar o dirty e o size
     movq %rax, enderecoMemoria
 
-    // Alocando meta-dados
-    movq topoAtualHeap, %rax    # Rax : topoAtual
-    addq $16, %rax              # adiciona 16 para alocar o dirty e o size
-    movq %rax, topoAtualHeap    # atualiza o topo da heap
-    movq topoAtualHeap, %rbx    # rbx esta sendo utilizado apenas como param. de checagem
+    /***********************************************
+    * Verifica se ultrapassamos o topo da heap,
+    * se sim devemos atualizá-lo
+    * caso contrário "pulamos" para a rotina "final"
+    *************************************************/
+    cmpq topoAtualHeap, %rax
+    jg atualizaTopo
 
-    /* Atualiza topo Heap */
-    movq $12, %rax              
-    movq topoAtualHeap, %rdi    
-    syscall   
-
+voltaParaAlocacao:
     /***********************************************
     * O endereço do topoAtualHeap está no rax, 
     * pq vai automatico dps da syscall pro brk.
@@ -135,25 +134,20 @@ alocaBloco:
     // (lembrar que o endereço do topo da heap já esta no rax)
     movq -8(%rbp), %rcx        # rcx: numero de bytes que quereos alocar
     addq %rcx, %rax
-    
-    /***********************************************
-    * Verifica se ultrapassamos o topo da heap,
-    * se sim devemos atualizá-lo
-    * caso contrário "pulamos" para a rotina "final"
-    *************************************************/
-    cmpq topoAtualHeap, %rax
-    jg atualizaTopo
 
     jmp finalAloca
 
 atualizaTopo:
-
-    movq %rax, topoAtualHeap
+    pushq %rax
+    movq -8(%rbp), %rcx         # rcx: qntd de bytes que queremos alocar
+    addq %rax, %rcx
+    movq %rcx, topoAtualHeap
     movq $12, %rax              # syscall para atualizar o brk
     movq topoAtualHeap, %rdi    # atualiza o brk
     syscall
+    popq %rax
 
-    jmp finalAloca
+    jmp voltaParaAlocacao
 
 
 /***********************************************
@@ -188,6 +182,8 @@ reparteBloco:
     jmp finalAloca
 
 finalAloca:
+
+    movq topoInicialHeap, %rax
     movq enderecoMemoria, %rax
     addq $8, %rsp
     popq %rbp
@@ -215,12 +211,10 @@ liberaMem:
     movq $0, %rcx
     movq $1, %rdx
 
-    // Bit dirty == 0
-    cmpq %rcx, -16(%rax)
+    cmpq %rcx, -16(%rax)        # Bit dirty == 0
     je podeDarFree
 
-    // Bit dirty == 1
-    cmpq %rdx, -16(%rax)
+    cmpq %rdx, -16(%rax)        # Bit dirty == 1
     je podeDarFree
 
     /* Caso em que -16(%rax) não caiu no cabeçalho de um bloco,
@@ -269,7 +263,6 @@ fusaoNos:
     movq %rdx, 8(%rbx)          # atualiza valor de size
 
     jmp procuraFusaoNos
-
 
 finalLiberaMem:
     popq %rbp
